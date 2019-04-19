@@ -13,7 +13,7 @@ int main(void)
 	SDL_DisplayMode current;
 	SDL_Init(SDL_INIT_VIDEO);
 	SDL_GetCurrentDisplayMode(0, &current);
-	
+
 	//unsigned int wp = 100 + WINDOW_WIDTH + 50;
 
 	unsigned int x = (current.w - (WINDOW_WIDTH * 2 + 100)) / 2;
@@ -25,14 +25,15 @@ int main(void)
 	SDL_Rect player_1  = {20,WINDOW_HEIGHT / 2 - 25,10,50};
 	SDL_Rect player_2 = {WINDOW_WIDTH - 30,WINDOW_HEIGHT / 2 - 25, 10, 50};
 
-	SDL_Rect left_ball= {WINDOW_WIDTH / 2 - 5,WINDOW_HEIGHT / 2,  10, 10};
+	SDL_Rect left_ball= {WINDOW_WIDTH - 10,WINDOW_HEIGHT / 2 - 5,  10, 10};
 	SDL_Rect right_ball= {-10, 0,  10, 10};
 
 	bool is_left = true;
-	
+	unsigned int vector = 1;
+
 	SDL_Renderer *left = SDL_CreateRenderer(left_window,-1,SDL_RENDERER_ACCELERATED);
 	SDL_Renderer *right = SDL_CreateRenderer(right_window,-1,SDL_RENDERER_ACCELERATED);
-	
+
 	SDL_Event event;
 
 	unsigned int score[2] = {0};
@@ -62,57 +63,110 @@ int main(void)
 
 	bool running = true;
 
-	
-	while(running){
-	SDL_PollEvent(&event);
 
-	switch (event.type) {
-		case SDL_QUIT:
-			running = false;	
-			break;
-		case SDL_KEYDOWN:
-			switch (event.key.keysym.sym) {
-				case SDLK_ESCAPE:
-					running = false;
-					break;
-				case SDLK_UP:
-					if (player_1.y > 0) player_1.y--;;
-					break;
-				case SDLK_DOWN:
-					if (player_1.y < WINDOW_HEIGHT - 50) player_1.y++;;
-					break;
-				default:
+	while(running){
+		SDL_PollEvent(&event);
+
+		switch (event.type) {
+			case SDL_QUIT:
+				running = false;	
+				break;
+			case SDL_KEYDOWN:
+				switch (event.key.keysym.sym) {
+					case SDLK_ESCAPE:
+						running = false;
+						break;
+					case SDLK_UP:
+						if (player_1.y > 0) player_1.y--;;
+						break;
+					case SDLK_DOWN:
+						if (player_1.y < WINDOW_HEIGHT - 50) player_1.y++;;
+						break;
+					default:
+						;
+						break;
+				}
+				break;
+			default:
 				;
 				break;
+		}
+
+		SDL_SetRenderDrawColor(left,17,17,17,255);
+		SDL_SetRenderDrawColor(right, 17,17,17,255);
+
+		SDL_RenderClear(left);
+		SDL_RenderClear(right);
+
+		SDL_SetRenderDrawColor(left,255,255,255,255);
+		SDL_SetRenderDrawColor(right,255,255,255,255);
+
+		SDL_RenderFillRect(left, &player_1);
+		SDL_RenderFillRect(right, &player_2);
+
+		SDL_RenderCopy(left,left_score_texture, NULL, &left_score_target);
+		SDL_RenderCopy(right,right_score_texture, NULL, &right_score_target);
+
+
+
+		SDL_RenderFillRect(left, &left_ball);
+		SDL_RenderFillRect(right, &right_ball);
+
+		is_left ? (left_ball.x += vector) : (right_ball.x += vector);
+
+		if(left_ball.x > WINDOW_WIDTH + 10){
+			left_ball.x = WINDOW_WIDTH + 10;	
+			is_left = !is_left;
+			right_ball.x = 0;
+			right_ball.y = left_ball.y;
+		}
+		if(right_ball.x < -10){
+			right_ball.x = -10;;	
+			is_left = !is_left;
+			left_ball.x = WINDOW_WIDTH + 10;
+			left_ball.y = right_ball.y;
+		}
+		//Player bounce
+		if (is_left == true && left_ball.y + 10 > player_1.y && left_ball.y  < player_1.y + 50 && left_ball.x < 30) {
+			vector *= -1;	
+		}
+		if(is_left == false && right_ball.y + 10 > player_2.y && right_ball.y < player_2.y + 50 && right_ball.x > WINDOW_WIDTH - 30){
+			vector *= -1;
+		}
+		//Score
+		if (is_left == true && left_ball.x + 10 < 0) {
+			if (score[0] < 10) {
+				score[0]++;
+						left_ball.x = WINDOW_WIDTH - 10;
+						left_ball.y = WINDOW_HEIGHT / 2 - 5;
+						right_ball.x = -10;
+						right_ball.y = 0;
+			}	
+			else{
+				score[0] = 0;
+				score[1] = 0;
 			}
-			break;
-		default:
-			;
-			break;
-	}
+		}
+		if (is_left == false && right_ball.x  > WINDOW_WIDTH) {
+			if (score[0] < 10) {
+				score[0]++;
+						left_ball.x = WINDOW_WIDTH - 10;
+						left_ball.y = WINDOW_HEIGHT / 2 - 5;
+						right_ball.x = -10;
+						right_ball.y = 0;
+			}	
+			else{
+				score[0] = 0;
+				score[1] = 0;
+			}
+		}
 
-	SDL_SetRenderDrawColor(left,17,17,17,255);
-	SDL_SetRenderDrawColor(right, 17,17,17,255);
 
-	SDL_RenderClear(left);
-	SDL_RenderClear(right);
-	
-	SDL_SetRenderDrawColor(left,255,255,255,255);
-	SDL_SetRenderDrawColor(right,255,255,255,255);
+		//Bottom || top edge bounce
 
-	SDL_RenderFillRect(left, &player_1);
-	SDL_RenderFillRect(right, &player_2);
-	
-	SDL_RenderCopy(left,left_score_texture, NULL, &left_score_target);
-	SDL_RenderCopy(right,right_score_texture, NULL, &right_score_target);
-	
-
-	SDL_RenderFillRect(left, &left_ball);
-	SDL_RenderFillRect(right, &right_ball);
-
-	//SDL_SetWindowPosition(right_window,wp,100); 
-	SDL_RenderPresent(left);
-	SDL_RenderPresent(right);
+		//SDL_SetWindowPosition(right_window,wp,100); 
+		SDL_RenderPresent(left);
+		SDL_RenderPresent(right);
 
 
 	}
