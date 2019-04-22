@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
 #include <stdbool.h>
 #include <math.h>
+#include <time.h>
 
 #include "digits.h"
 
@@ -16,21 +16,6 @@ enum {
 	BALL_SIZE = 10,
 	MAX_ANGLE = 20
 };
-
-//SDL_Color white = {255,255,255,255};
-SDL_Color gray = {64,64,64,255};
-
-void rebuldLabelTexture(SDL_Renderer *render_target, SDL_Texture *label_texture,TTF_Font *font, unsigned int score){
-
-	char buffor[2];
-	sprintf(buffor,"%d",score);
-	buffor[1] = '\0';
-	SDL_Surface *score_surface = TTF_RenderText_Blended(font,buffor,gray); 	
-	SDL_DestroyTexture(label_texture);
-	label_texture = SDL_CreateTextureFromSurface(render_target,score_surface);
-	SDL_FreeSurface(score_surface);
-
-}
 
 int main(void)
 {
@@ -60,50 +45,43 @@ int main(void)
 	SDL_Rect right_ball= {(int)right_ball_x, (int)right_ball_y, BALL_SIZE, BALL_SIZE};
 
 	bool is_left = true;
-	float vector[2] = {-1.0,0.0};
+	bool did_touch = false;
+
+	srand(time(NULL));
+	float vector[2] = {-1.0, (-4 + rand() % 9) * 0.1};
 
 
 	SDL_Renderer *left = SDL_CreateRenderer(left_window,-1,SDL_RENDERER_ACCELERATED);
 	SDL_Renderer *right = SDL_CreateRenderer(right_window,-1,SDL_RENDERER_ACCELERATED);
 
+	//Digits target heneration
+	SDL_Rect left_score_digit[15];
+	SDL_Rect right_score_digit[15];
+
+	for (int i = 0, n = 0; i < 15; ++i) {
+
+		left_score_digit[i].x = WINDOW_WIDTH - BALL_SIZE * 3 - 20 + (BALL_SIZE * (i%3));
+		right_score_digit[i].x = 20 + (BALL_SIZE * (i%3));
+		left_score_digit[i].y = 20 + (BALL_SIZE * n);
+		right_score_digit[i].y = 20 + (BALL_SIZE * n);
+
+		left_score_digit[i].w = BALL_SIZE;
+		right_score_digit[i].w = BALL_SIZE;
+		left_score_digit[i].h = BALL_SIZE;
+		right_score_digit[i].h = BALL_SIZE;
+
+		if (i%3 == 2) {
+			n++;
+		}
+
+	}
+
+
 	SDL_Event event;
 
 	unsigned int score[2] = {0};
 
-
-	TTF_Init();
-	TTF_Font *font = TTF_OpenFont("Symtext.ttf", 80);	
-
-	char left_label_buffor[2];
-	sprintf(left_label_buffor,"%d",score[0]);
-	left_label_buffor[1] = '\0';
-	SDL_Surface *left_score_surface = TTF_RenderText_Blended(font,left_label_buffor,gray); 	
-	SDL_Rect left_score_target = {WINDOW_WIDTH - 90, 0, left_score_surface->w, left_score_surface->h};
-	SDL_Texture *left_score_texture = SDL_CreateTextureFromSurface(left,left_score_surface);
-	SDL_FreeSurface(left_score_surface);
-
-	char right_label_buffor[2];
-	sprintf(right_label_buffor,"%d",score[1]);
-	right_label_buffor[1] = '\0';
-	SDL_Surface *right_score_surface = TTF_RenderText_Blended(font,right_label_buffor,gray); 	
-	SDL_Rect right_score_target = {30, 0, right_score_surface->w, right_score_surface->h};
-	SDL_Texture *right_score_texture = SDL_CreateTextureFromSurface(right,right_score_surface);
-	SDL_FreeSurface(right_score_surface);
-
 	bool running = true;
-
-	unsigned int base_x = 50;
-	unsigned int base_y = 50;
-
-	SDL_Rect left_score_digit[15];
-
-	for (int i = 0; i < 15; ++i) {
-		left_score_digit[i].x = base_x + (BALL_SIZE * i);
-		left_score_digit[i].y = base_y + (BALL_SIZE * i);
-		left_score_digit[i].w = BALL_SIZE;
-		left_score_digit[i].h = BALL_SIZE;
-	}
-
 	while(running){
 		SDL_PollEvent(&event);
 
@@ -142,16 +120,12 @@ int main(void)
 		SDL_SetRenderDrawColor(right,255,255,255,255);
 
 		SDL_RenderFillRect(left, &player_1);
+
+		//player_2.y = right_ball.y + PAD_HEIGH / 2;
 		SDL_RenderFillRect(right, &player_2);
+		SDL_RenderFillRect(left, &player_1);
 
-		SDL_RenderCopy(left,left_score_texture, NULL, &left_score_target);
-		SDL_RenderCopy(right,right_score_texture, NULL, &right_score_target);
 
-		for (int i = 0; i < 15; ++i) {
-			SDL_RenderFillRect(left,&(left_score_digit[i]));
-		}
-		
-	
 		//Ball movment
 		if (is_left) {
 			left_ball_x += vector[0];
@@ -160,7 +134,7 @@ int main(void)
 			right_ball_x += vector[0];
 			right_ball_y += vector[1];
 		}
-		
+
 		left_ball.x = (int)left_ball_x;
 		left_ball.y = (int)left_ball_y;
 		SDL_RenderFillRect(left, &left_ball);
@@ -171,59 +145,57 @@ int main(void)
 
 		//Freeze left ball
 		if(is_left == true && left_ball.x > WINDOW_WIDTH + BALL_SIZE){
-			printf("Left ball freeze\n");
 			left_ball.x = WINDOW_WIDTH + BALL_SIZE;	
 			is_left = !is_left;
 			right_ball.x = -BALL_SIZE;
 			right_ball.y = left_ball.y;
+			did_touch = false;
 		}
 		//Freeze right ball
 		if(is_left == false && right_ball.x < -BALL_SIZE){
-			printf("RIght ball freeze\n");
 			right_ball.x = -BALL_SIZE;;	
 			is_left = !is_left;
 			left_ball.x = WINDOW_WIDTH + BALL_SIZE;
 			left_ball.y = right_ball.y;
+			did_touch = false;
 		}
 
 		//Player bounce
-		if (is_left == true && left_ball.y + BALL_SIZE > player_1.y && left_ball.y  < player_1.y + PAD_HEIGH && left_ball.x < 30) {
+		if (is_left == true && did_touch == false && left_ball.y + BALL_SIZE > player_1.y && left_ball.y  < player_1.y + PAD_HEIGH && left_ball.x < 20 + PAD_WIGHT) {
 			int d = (left_ball.y + BALL_SIZE / 2) - (player_1.y + PAD_HEIGH / 2);
-
 			printf("Left bounce at %d\n",d);
 			vector[0] = -vector[0];
-			vector[1] = -vector[1];
-
+			vector[1] = vector[1];
+			did_touch = true;
 
 		}
-		if(is_left == false && right_ball.y + BALL_SIZE > player_2.y && right_ball.y < player_2.y + PAD_HEIGH && right_ball.x > WINDOW_WIDTH - 40){
+		if(is_left == false && did_touch == false && right_ball.y + BALL_SIZE > player_2.y && right_ball.y < player_2.y + PAD_HEIGH && right_ball.x == WINDOW_WIDTH - 40){
 
 			int d = (right_ball.y + BALL_SIZE / 2) - (player_2.y + PAD_HEIGH / 2);
+
 			printf("Right bounce at %d\n", d);
 			vector[0] = -vector[0];
 			vector[1] = -vector[1];
+			did_touch = true;
 		}	
 		//Bottom || top edge bounce
 		if (right_ball.y < 0 || right_ball.y + BALL_SIZE > WINDOW_HEIGHT || left_ball.y < 0 || left_ball.y + BALL_SIZE > WINDOW_HEIGHT) {
 			vector[0] = vector[0];
-			vector[1] = -vector[1];
+			vector[1] = vector[1];
 
 		}
 
 
 		//Score
 		if (is_left == true && left_ball.x + 10 < 0) {
-			if (score[1] < 10) {
+			if (score[1] < 9) {
 				score[1]++;
-				
-				rebuldLabelTexture(right, right_score_texture, font, score[1]);
+
 			}	
 			else{
 				score[0] = 0;
 				score[1] = 0;
 
-				rebuldLabelTexture(left, left_score_texture, font, score[0]);
-				rebuldLabelTexture(right, right_score_texture, font, score[1]);
 			}
 
 			left_ball_x = WINDOW_WIDTH - BALL_SIZE;
@@ -231,41 +203,48 @@ int main(void)
 			right_ball_x = -10;
 			right_ball_y = WINDOW_HEIGHT / 2 - BALL_SIZE / 2;
 			vector[0] = -1.0f;
-			vector[1] = 0.0f;
+			vector[1] = (-4 + rand() % 9) * 0.1;
 
 		}
 		if (is_left == false && right_ball.x  > WINDOW_WIDTH) {
-			if (score[0] < 10) {
+			if (score[0] < 9) {
 				score[0]++;
 
-				rebuldLabelTexture(left, left_score_texture, font, score[0]);
 			}	
 			else{
 				score[0] = 0;
 				score[1] = 0;
 
-				rebuldLabelTexture(left, left_score_texture, font, score[0]);
-				rebuldLabelTexture(right, right_score_texture, font, score[1]);
 			}
 			left_ball_x = WINDOW_WIDTH + BALL_SIZE;
 			left_ball_y = WINDOW_HEIGHT / 2 - BALL_SIZE / 2;
 			right_ball.x = -10;
 			right_ball.y = WINDOW_HEIGHT / 2 - BALL_SIZE / 2;
 			vector[0] = -1.0f;
-			vector[1] = 0.0f;
+			vector[1] = (-4 + rand() % 9) * 0.1;
 
 		}
-		
 
 
+		//Score rendering
+		for (int i = 0; i < 15; ++i) {
+
+			if (digits[score[0]][i]) {
+				SDL_RenderFillRect(left,&(left_score_digit[i]));
+			}
+			if (digits[score[1]][i]) {
+				SDL_RenderFillRect(right,&(right_score_digit[i]));
+			}
+		}
 
 		//SDL_SetWindowPosition(right_window,wp,100); 
 		SDL_RenderPresent(left);
 		SDL_RenderPresent(right);
 
+		//SDL_Delay(10);
+
 
 	}
-	TTF_Quit();
 	SDL_Quit();
 
 	return 0;
