@@ -6,3 +6,5 @@ make
 ./pong
 
 Player move - up/down arrows
+
+![alt text](http://mzajac.webd.pl/github/cp.png)
