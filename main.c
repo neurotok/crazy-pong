@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <SDL2/SDL.h>
-#include <SDL2/SDL2_gfxPrimitives.h>
 #include <stdbool.h>
 #include <math.h>
-#include <time.h>
 
 #include "digits.h"
 
@@ -40,18 +38,16 @@ int main(void)
 	float left_ball_y = WINDOW_HEIGHT / 2 - BALL_SIZE / 2;
 
 	float right_ball_x = -10.0f;
-	float right_ball_y = WINDOW_HEIGHT / 2 - BALL_SIZE / 2;
+	float right_ball_y = left_ball_y;
 
 	SDL_Rect left_ball= {(int)left_ball_x, (int)left_ball_y, BALL_SIZE, BALL_SIZE};
 	SDL_Rect right_ball= {(int)right_ball_x, (int)right_ball_y, BALL_SIZE, BALL_SIZE};
 
 	bool is_left = true;
 	bool did_touch = false;
-
-	srand(time(NULL));
-	float vector[2] = {-1.0f, 0.0f};
-	//float vector[2] = {-1.0, (-4 + rand() % 9) * 0.1};
-
+	
+	float speed = 5.0f;
+	float vector[2] = {-1.0f * speed, 0.0f * speed};
 
 	SDL_Renderer *left = SDL_CreateRenderer(left_window,-1,SDL_RENDERER_ACCELERATED);
 	SDL_Renderer *right = SDL_CreateRenderer(right_window,-1,SDL_RENDERER_ACCELERATED);
@@ -75,14 +71,17 @@ int main(void)
 		if (i%3 == 2) {
 			n++;
 		}
-
 	}
 
 	SDL_Event event;
 
 	unsigned int score[2] = {0};
 
+	Uint32 last_time = 0;
+	Uint32 delta_time = 0;
+	Uint32 current_time; 
 	bool running = true;
+
 	while(running){
 		SDL_PollEvent(&event);
 
@@ -96,10 +95,10 @@ int main(void)
 						running = false;
 						break;
 					case SDLK_UP:
-						if (player_1.y > 0) player_1.y--;;
+						if (player_1.y > 0) player_1.y-= (int)speed;;
 						break;
 					case SDLK_DOWN:
-						if (player_1.y < WINDOW_HEIGHT - 50) player_1.y++;;
+						if (player_1.y < WINDOW_HEIGHT - PAD_HEIGH) player_1.y += (int)speed;
 						break;
 					default:
 						;
@@ -131,24 +130,20 @@ int main(void)
 			}
 		}
 
-
 		SDL_SetRenderDrawColor(left,255,255,255,255);
 		SDL_SetRenderDrawColor(right,255,255,255,255);
 
-		SDL_RenderFillRect(left, &player_1);
-		//player_2.y = right_ball.y + PAD_HEIGH / 2;
-		SDL_RenderFillRect(right, &player_2);
-
-
-		//Ball movment
+		//Ball movment 
 		if (is_left) {
-			left_ball_x += vector[0];
+			left_ball_x += vector[0]; 
 			left_ball_y += vector[1];
+			right_ball_y += vector[1];
 		}else{
 			right_ball_x += vector[0];
 			right_ball_y += vector[1];
+			left_ball_y += vector[1];
 		}
-
+	
 		///Ball target initialization & render
 		left_ball.x = (int)left_ball_x;
 		left_ball.y = (int)left_ball_y;
@@ -157,54 +152,64 @@ int main(void)
 		right_ball.x = (int)right_ball_x;
 		right_ball.y = (int)right_ball_y;
 		SDL_RenderFillRect(right, &right_ball);
+		
+		SDL_RenderFillRect(left, &player_1);
+
+		//Player 2 = ball position
+		int player_2_y =  right_ball_y - PAD_HEIGH / 2;
+		if (right_ball_y > PAD_HEIGH / 2 && right_ball_y < WINDOW_HEIGHT - PAD_HEIGH / 2) {
+			
+			player_2.y = player_2_y;
+				
+		}
+
+		SDL_RenderFillRect(right, &player_2);
 
 		//Freeze left ball
-		if(is_left == true && left_ball_x > WINDOW_WIDTH + BALL_SIZE){
+		if(is_left == true && left_ball.x > WINDOW_WIDTH + BALL_SIZE){
 			left_ball_x = WINDOW_WIDTH + BALL_SIZE;	
 			is_left = !is_left;
 			right_ball_x = -BALL_SIZE;
-			right_ball_y = left_ball_y;
 			did_touch = false;
+			//printf("freeze\n");
 		}
 		//Freeze right ball
-		if(is_left == false && right_ball_x < -BALL_SIZE){
+		if(is_left == false && right_ball.x < -BALL_SIZE){
 			right_ball_x = -BALL_SIZE;;	
 			is_left = !is_left;
 			left_ball_x = WINDOW_WIDTH + BALL_SIZE;
-			left_ball_y = right_ball_y;
 			did_touch = false;
+			//printf("freeze\n");
 		}
 
 		//Player bounce
 		if (is_left == true && did_touch == false && left_ball.y + BALL_SIZE > player_1.y && left_ball.y  < player_1.y + PAD_HEIGH && left_ball.x < 20 + PAD_WIGHT) {
-			int d = (left_ball_y + BALL_SIZE / 2) - (player_1.y + PAD_HEIGH / 2);
-			//printf("Left bounce at %d\n",d);
+			int d = (left_ball.y + BALL_SIZE / 2) - (player_1.y + PAD_HEIGH / 2);
 			vector[0] = -vector[0];
-			vector[1] = vector[1];
-			vector[1] += d * 0.5 / (PAD_HEIGH / 2);
+			vector[1] += d * 0.5 / (PAD_HEIGH / 2) * speed;
 			did_touch = true;
+			//printf("hit\n");
 
 		}
-		if(is_left == false && did_touch == false && right_ball.y + BALL_SIZE > player_2.y && right_ball.y < player_2.y + PAD_HEIGH && right_ball_x == WINDOW_WIDTH - 40){
+		if(is_left == false && did_touch == false && right_ball.y + BALL_SIZE > player_2.y && right_ball.y < player_2.y + PAD_HEIGH && right_ball.x > WINDOW_WIDTH - 40){
 
 			int d = (right_ball.y + BALL_SIZE / 2) - (player_2.y + PAD_HEIGH / 2);
 			vector[0] = -vector[0];
-			vector[1] = -vector[1];
-			vector[1] += d * 0.5 / (PAD_HEIGH / 2);
+			vector[1] += d * 0.5 / (PAD_HEIGH / 2) * speed;
 			did_touch = true;
+			//printf("hit\n");
 		}	
 
 		//Bottom || top edge bounce
-		if (right_ball_y < 0 || right_ball_y + BALL_SIZE > WINDOW_HEIGHT || left_ball_y < 0 || left_ball_y + BALL_SIZE > WINDOW_HEIGHT) {
+		if (right_ball.y < 0 || right_ball.y + BALL_SIZE > WINDOW_HEIGHT || left_ball.y < 0 || left_ball.y + BALL_SIZE > WINDOW_HEIGHT) {
 
 			vector[1] = -vector[1];
-			printf("bounce\n");
+			//printf("bounce\n");
 
 		}
 
-
 		//Score
-		if (is_left == true && did_touch  == false && left_ball_x + 10 < 0) {
+		if (is_left == true && did_touch  == false && left_ball.x + 10 < 0) {
 
 			if (score[1] < 9) {
 				score[1]++;
@@ -217,17 +222,14 @@ int main(void)
 			left_ball_x = WINDOW_WIDTH - BALL_SIZE;
 			left_ball_y = WINDOW_HEIGHT / 2 - BALL_SIZE / 2;
 			right_ball_x = -10;
-			right_ball_y = WINDOW_HEIGHT / 2 - BALL_SIZE / 2;
-			vector[0] = -1.0f;
+			right_ball_y = left_ball_y;
+			vector[0] = -1.0f * speed;
 			vector[1] = 0.0f;
-			//vector[1] = (-4 + rand() % 9) * 0.1;
 			is_left = true;
-			//did_touch = false;
-			
-			printf("score\n");
+			//printf("score\n");
 
 		}
-		if (is_left == false  && did_touch == false && right_ball_x  > WINDOW_WIDTH) {
+		if (is_left == false  && did_touch == false && right_ball.x  > WINDOW_WIDTH) {
 
 			if (score[0] < 9) {
 				score[0]++;
@@ -242,37 +244,25 @@ int main(void)
 			left_ball_x = WINDOW_WIDTH + BALL_SIZE;
 			left_ball_y = WINDOW_HEIGHT / 2 - BALL_SIZE / 2;
 			right_ball_x = -10;
-			right_ball_y = WINDOW_HEIGHT / 2 - BALL_SIZE / 2;
-			vector[0] = -1.0f;
+			right_ball_y = left_ball_y;
+			vector[0] = -1.0f * speed;
 			vector[1] = 0.0f;
-			//vector[1] = (-4 + rand() % 9) * 0.1;
 			is_left = true;
-			//did_touch = false;
-
-
-			printf("score\n");
+			//printf("score\n");
 		}
-		
-		int y = 20, x = 20;
 
-		boxColor(left, x, y, x + 200, y + 100, 0xAA000000);	
+		current_time = SDL_GetTicks();
+		delta_time = current_time - last_time;
+		last_time = current_time;
 
-		char d_current_state[128];
-		sprintf(d_current_state,"Vector X: %.2f",vector[0]);	
-		stringColor (left, x + 10, y + 10, d_current_state,0xFFFFFFFF); 
+		if (delta_time < 1000/60) {
+			SDL_Delay(1000/60 - delta_time);
+		}
 
-		char d_win_counter[128];
-		sprintf(d_win_counter,"Vector Y: %.2f", vector[1]);	
-		stringColor (left, x + 10, y + 25, d_win_counter,0xFFFFFFFF); 
-
-
-	
 		SDL_RenderPresent(left);
 		SDL_RenderPresent(right);
 
 		//SDL_SetWindowPosition(right_window,wp,100); 
-		//SDL_Delay(10);
-
 
 	}
 	SDL_Quit();
