@@ -24,10 +24,10 @@ int main(void)
 
 	//unsigned int wp = 100 + WINDOW_WIDTH + 50;
 
-	unsigned int x = (current.w - (WINDOW_WIDTH * 2 + 100)) / 2;
-	unsigned int y = (current.h - WINDOW_HEIGHT) / 2;
-	SDL_Window *left_window = SDL_CreateWindow("Pong", x, y, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL);
-	SDL_Window *right_window = SDL_CreateWindow("Pong", x + WINDOW_WIDTH + 100, y, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL);
+	unsigned int base_x = (current.w - (WINDOW_WIDTH * 2 + 100)) / 2;
+	unsigned int base_y = (current.h - WINDOW_HEIGHT) / 2;
+	SDL_Window *left_window = SDL_CreateWindow("Pong", base_x, base_y, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL);
+	SDL_Window *right_window = SDL_CreateWindow("Pong", base_x + WINDOW_WIDTH + 100, base_y, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL);
 
 
 	SDL_Rect player_1  = {20,WINDOW_HEIGHT / 2 - PAD_HEIGH / 2,PAD_WIGHT,PAD_HEIGH};
@@ -158,9 +158,12 @@ int main(void)
 		//Player 2 = ball position
 		int player_2_y =  right_ball_y - PAD_HEIGH / 2;
 		if (right_ball_y > PAD_HEIGH / 2 && right_ball_y < WINDOW_HEIGHT - PAD_HEIGH / 2) {
-			
-			player_2.y = player_2_y;
-				
+	
+			if (player_2_y - player_2.y > 0){
+				player_2.y++;
+			}else{
+				player_2.y--;
+			}
 		}
 
 		SDL_RenderFillRect(right, &player_2);
@@ -259,10 +262,16 @@ int main(void)
 			SDL_Delay(1000/60 - delta_time);
 		}
 
+		/*
+		unsigned int left_win_x = WINDOW_WIDTH / 2 + left_ball_x / WINDOW_WIDTH * 50;
+		unsigned int left_win_y = left_ball_x / WINDOW_WIDTH * 50;
+		
+		SDL_SetWindowPosition(left_window, base_x + left_win_x,base_y + left_win_y); 
+		*/	
+	
 		SDL_RenderPresent(left);
 		SDL_RenderPresent(right);
-
-		//SDL_SetWindowPosition(right_window,wp,100); 
+	
 
 	}
 	SDL_Quit();
